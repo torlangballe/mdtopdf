@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mandolyte/mdtopdf"
+	"github.com/torlangballe/mdtopdf"
 )
 
 var input = flag.String("i", "", "Input text filename; default is os.Stdin")

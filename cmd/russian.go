@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/mandolyte/mdtopdf"
+	"github.com/torlangballe/mdtopdf"
 )
 
 var input = flag.String("i", "", "Input text filename; default is os.Stdin")
@@ -46,9 +46,9 @@ func main() {
 	pf.Pdf.SetFont("Helvetica-1251", "", 12)
 	// get the unicode translator
 	tr := pf.Pdf.UnicodeTranslatorFromDescriptor("cp1251")
-	pf.Normal = mdtopdf.Styler{Font: "Helvetica-1251", Style: "", 
+	pf.Normal = mdtopdf.Styler{Font: "Helvetica-1251", Style: "",
 		Size: 12, Spacing: 2,
-		TextColor: mdtopdf.Color{0, 0, 0}, 
+		TextColor: mdtopdf.Color{0, 0, 0},
 		FillColor: mdtopdf.Color{255, 255, 255}}
 
 	err = pf.Process([]byte(tr(string(content))))

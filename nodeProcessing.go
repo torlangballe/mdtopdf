@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/jung-kurt/gofpdf"
-	bf "github.com/torlangballe/blackfriday"
+	bf "github.com/torlangballe/blackfridayV2"
 )
 
 func (r *PdfRenderer) processText(node *bf.Node) {
