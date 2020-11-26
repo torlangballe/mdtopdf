@@ -25,16 +25,24 @@ import (
 	"strings"
 
 	"github.com/jung-kurt/gofpdf"
-	bf "gopkg.in/russross/blackfriday.v2"
+	bf "github.com/torlangballe/blackfriday"
 )
 
 func (r *PdfRenderer) processText(node *bf.Node) {
+	if r.IsInImage {
+		return
+	}
 	currentStyle := r.cs.peek().textStyle
 	r.setStyler(currentStyle)
 	s := string(node.Literal)
 	s = strings.Replace(s, "\n", " ", -1)
+	if r.TrimNext {
+		s = strings.TrimLeft(s, " ")
+		r.TrimNext = false
+	}
 	r.tracer("Text", s)
 
+	// fmt.Println("PdfRenderer processText:", r.cs.peek().containerType, r.cs.peek().destination, s)
 	if r.cs.peek().containerType == bf.Link {
 		r.writeLink(currentStyle, s, r.cs.peek().destination)
 	} else if r.cs.peek().containerType == bf.Heading {
@@ -64,6 +72,14 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 		}
 	} else {
 		r.write(currentStyle, s)
+	}
+	if r.ParagraphUnprocessed && r.cs.peek().listkind != notlist && s != "" {
+		if r.StrongOn {
+			// fmt.Println("First Text in list paragraph:", r.ParagraphUnprocessed, r.cs.peek().listkind, s)
+			r.TrimNext = true
+			r.cr() // start on next line!
+		}
+		r.ParagraphUnprocessed = false
 	}
 }
 
@@ -100,6 +116,7 @@ func (r *PdfRenderer) processList(node *bf.Node, entering bool) {
 			textStyle: r.Normal, itemNumber: 0,
 			listkind:   kind,
 			leftMargin: r.cs.peek().leftMargin + r.IndentValue}
+		//		r.cr()
 		// before pushing check to see if this is a sublist
 		// if so, then output a newline
 		/*
@@ -172,9 +189,14 @@ func (r *PdfRenderer) processEmph(node *bf.Node, entering bool) {
 }
 
 func (r *PdfRenderer) processStrong(node *bf.Node, entering bool) {
+	r.StrongOn = entering
 	if entering {
 		r.tracer("Strong (entering)", "")
-		r.cs.peek().textStyle.Style += "b"
+		s := r.cs.peek().textStyle.Style
+		if !strings.Contains(s, "b") {
+			s += "b"
+		}
+		r.cs.peek().textStyle.Style = s
 	} else {
 		r.tracer("Strong (leaving)", "")
 		r.cs.peek().textStyle.Style = strings.Replace(
@@ -184,8 +206,13 @@ func (r *PdfRenderer) processStrong(node *bf.Node, entering bool) {
 
 func (r *PdfRenderer) processLink(node *bf.Node, entering bool) {
 	if entering {
+		// fmt.Println("PdfRenderer processLink:", node.HeadingData.Level, string(node.LinkData.Destination))
+		styler := r.Link
+		if r.CurrentHeaderStyler != nil {
+			styler.Size = r.CurrentHeaderStyler.Size
+		}
 		x := &containerState{containerType: bf.Link,
-			textStyle: r.Link, listkind: notlist,
+			textStyle: styler, listkind: notlist,
 			leftMargin:  r.cs.peek().leftMargin,
 			destination: string(node.LinkData.Destination)}
 		r.cs.push(x)
@@ -202,6 +229,7 @@ func (r *PdfRenderer) processLink(node *bf.Node, entering bool) {
 func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 	// while this has entering and leaving states, it doesn't appear
 	// to be useful except for other markup languages to close the tag
+	r.IsInImage = entering
 	if entering {
 		r.tracer("Image (entering)",
 			fmt.Sprintf("Destination[%v] Title[%v]",
@@ -209,11 +237,12 @@ func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 				string(node.LinkData.Title)))
 		// following changes suggested by @sirnewton01, issue #6
 		// does file exist?
-		var imgPath = string(node.LinkData.Destination)
+		var imgPath = r.LocalFilePathPrefix + string(node.LinkData.Destination)
 		_, err := os.Stat(imgPath)
+		// fmt.Println("PdfRenderer processImage:", imgPath, err)
 		if err == nil {
-			r.Pdf.ImageOptions(string(node.LinkData.Destination),
-				-1, 0, 0, 0, true,
+			r.Pdf.ImageOptions(string(imgPath),
+				-1, 0, -1, -1, true,
 				gofpdf.ImageOptions{ImageType: "", ReadDpi: true}, 0, "")
 		} else {
 			r.tracer("Image (file error)", err.Error())
@@ -231,6 +260,9 @@ func (r *PdfRenderer) processCode(node *bf.Node) {
 
 func (r *PdfRenderer) processParagraph(node *bf.Node, entering bool) {
 	r.setStyler(r.Normal)
+	r.ParagraphUnprocessed = true
+	r.TrimNext = false
+
 	if entering {
 		r.tracer("Paragraph (entering)", "")
 		lm, tm, rm, bm := r.Pdf.GetMargins()
@@ -297,42 +329,49 @@ func (r *PdfRenderer) processHeading(node *bf.Node, entering bool) {
 		switch node.HeadingData.Level {
 		case 1:
 			r.tracer("Heading (1, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H1
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H1, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 2:
 			r.tracer("Heading (2, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H2
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H2, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 3:
 			r.tracer("Heading (3, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H3
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H3, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 4:
 			r.tracer("Heading (4, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H4
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H4, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 5:
 			r.tracer("Heading (5, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H5
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H5, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		case 6:
 			r.tracer("Heading (6, entering)", fmt.Sprintf("%v", node.HeadingData))
+			r.CurrentHeaderStyler = &r.H6
 			x := &containerState{containerType: bf.Heading,
 				textStyle: r.H6, listkind: notlist,
 				leftMargin: r.cs.peek().leftMargin}
 			r.cs.push(x)
 		}
 	} else {
+		r.CurrentHeaderStyler = nil
 		r.tracer("Heading (leaving)", "")
 		r.cr()
 		r.cs.pop()

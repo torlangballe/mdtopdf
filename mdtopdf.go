@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/jung-kurt/gofpdf"
-	bf "gopkg.in/russross/blackfriday.v2"
+	bf "github.com/torlangballe/blackfriday"
 )
 
 // Color is a RGB set of ints; for a nice picker
@@ -72,7 +72,6 @@ type PdfRenderer struct {
 
 	// link text
 	Link Styler
-
 	// backticked text
 	Backtick Styler
 
@@ -93,6 +92,15 @@ type PdfRenderer struct {
 	TBody   Styler
 
 	cs states
+
+	// LocalFilePathPrefix allows images to be in sub-directories
+	LocalFilePathPrefix string
+	// IsInImage is set while in image, skipping [Title] stuff that is output. Hack for now.
+	IsInImage            bool
+	ParagraphUnprocessed bool
+	StrongOn             bool
+	TrimNext             bool
+	CurrentHeaderStyler  *Styler
 }
 
 // NewPdfRenderer creates and configures an PdfRenderer object,

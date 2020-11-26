@@ -20,7 +20,7 @@
 package mdtopdf
 
 import (
-	bf "gopkg.in/russross/blackfriday.v2"
+	bf "github.com/torlangballe/blackfriday"
 )
 
 type listType int
