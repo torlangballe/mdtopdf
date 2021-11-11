@@ -24,7 +24,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jung-kurt/gofpdf"
+	"github.com/jung-kurt/gofpdf/v2"
 	bf "github.com/torlangballe/blackfridayV2"
 )
 
@@ -32,6 +32,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 	if r.IsInImage {
 		return
 	}
+	r.IsInText = false
 	currentStyle := r.cs.peek().textStyle
 	r.setStyler(currentStyle)
 	s := string(node.Literal)
@@ -44,7 +45,13 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 
 	// fmt.Println("PdfRenderer processText:", r.cs.peek().containerType, r.cs.peek().destination, s)
 	if r.cs.peek().containerType == bf.Link {
-		r.writeLink(currentStyle, s, r.cs.peek().destination)
+		//		LocalFilePathPrefix
+		sdest := r.cs.peek().destination
+		if !strings.HasPrefix(sdest, "http:") && !strings.HasPrefix(sdest, "https:") {
+			sdest = r.LocalHostPrefix + r.LocalFilePathPrefix + sdest
+		}
+		r.writeLink(currentStyle, s, sdest)
+		// fmt.Println("PdfRenderer processText Link:", s, slink)
 	} else if r.cs.peek().containerType == bf.Heading {
 		//r.cr() // add space before heading
 		r.write(currentStyle, s)
@@ -71,6 +78,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 			r.Pdf.CellFormat(hw, h, s, "LR", 0, "", fill, 0, "")
 		}
 	} else {
+		r.IsInText = (len(s) != 0)
 		r.write(currentStyle, s)
 	}
 	if r.ParagraphUnprocessed && r.cs.peek().listkind != notlist && s != "" {
@@ -239,11 +247,12 @@ func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 		// does file exist?
 		var imgPath = r.LocalFilePathPrefix + string(node.LinkData.Destination)
 		_, err := os.Stat(imgPath)
-		// fmt.Println("PdfRenderer processImage:", imgPath, err)
+		// fmt.Println("PdfRenderer processImage:", imgPath, err, r.IsInText, "loc:", r.LocalFilePathPrefix)
 		if err == nil {
+			flow := true
 			r.Pdf.ImageOptions(string(imgPath),
-				-1, 0, -1, -1, true,
-				gofpdf.ImageOptions{ImageType: "", ReadDpi: true}, 0, "")
+				-1, 0, -1, -1, flow,
+				gofpdf.ImageOptions{ImageType: "", ReadDpi: true, IsInline: r.IsInText}, 0, "")
 		} else {
 			r.tracer("Image (file error)", err.Error())
 		}

@@ -27,8 +27,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/jung-kurt/gofpdf"
 	bf "github.com/torlangballe/blackfridayV2"
+	"github.com/torlangballe/gofpdf"
 )
 
 // Color is a RGB set of ints; for a nice picker
@@ -93,10 +93,11 @@ type PdfRenderer struct {
 
 	cs states
 
-	// LocalFilePathPrefix allows images to be in sub-directories
-	LocalFilePathPrefix string
+	LocalHostPrefix string
+	LocalFilePathPrefix string // allows images to be in sub-directories
 	// IsInImage is set while in image, skipping [Title] stuff that is output. Hack for now.
 	IsInImage            bool
+	IsInText             bool
 	ParagraphUnprocessed bool
 	StrongOn             bool
 	TrimNext             bool
@@ -185,6 +186,7 @@ func NewPdfRenderer(orient, papersz, pdfFile, tracerFile string) *PdfRenderer {
 // Process takes the markdown content, parses it to generate the PDF
 func (r *PdfRenderer) Process(content []byte) error {
 
+	fmt.Println("PdfRenderer.Process")
 	// try to open tracer
 	var f *os.File
 	var err error
@@ -317,6 +319,8 @@ func (r *PdfRenderer) cr() {
 	LH := r.cs.peek().textStyle.Size + r.cs.peek().textStyle.Spacing
 	r.tracer("cr()", fmt.Sprintf("LH=%v", LH))
 	r.write(r.cs.peek().textStyle, "\n")
+	r.IsInText = false
+	//	fmt.Println("CR")
 	//r.Pdf.Ln(-1)
 }
 
