@@ -14,7 +14,7 @@
  *
  * gofpdf - a PDF document generator with high level support for
  *   text, drawing and images.
- *   Available at https://github.com/jung-kurt/gofpdf
+ *   Available at https://github.com/torlangballe/gofpdfv2
  */
 
 // Package mdtopdf converts markdown to PDF.
@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	bf "github.com/torlangballe/blackfridayV2"
-	"github.com/torlangballe/gofpdf"
+	"github.com/torlangballe/gofpdfv2"
 )
 
 // Color is a RGB set of ints; for a nice picker
@@ -93,7 +93,7 @@ type PdfRenderer struct {
 
 	cs states
 
-	LocalHostPrefix string
+	LocalHostPrefix     string
 	LocalFilePathPrefix string // allows images to be in sub-directories
 	// IsInImage is set while in image, skipping [Title] stuff that is output. Hack for now.
 	IsInImage            bool
