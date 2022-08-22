@@ -24,16 +24,21 @@ import (
 	"os"
 	"strings"
 
-	"github.com/torlangballe/gofpdfv2"
 	bf "github.com/torlangballe/blackfridayV2"
+	gofpdf "github.com/torlangballe/gofpdfv2"
+	"github.com/torlangballe/zutil/zfile"
+	"github.com/torlangballe/zutil/zhttp"
+	"github.com/torlangballe/zutil/zlog"
 )
 
 func (r *PdfRenderer) processText(node *bf.Node) {
 	if r.IsInImage {
 		return
 	}
+
 	r.IsInText = false
 	currentStyle := r.cs.peek().textStyle
+	zlog.Info("processText1", currentStyle, string(node.Literal))
 	r.setStyler(currentStyle)
 	s := string(node.Literal)
 	s = strings.Replace(s, "\n", " ", -1)
@@ -42,20 +47,32 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 		r.TrimNext = false
 	}
 	r.tracer("Text", s)
-
-	// fmt.Println("PdfRenderer processText:", r.cs.peek().containerType, r.cs.peek().destination, s)
 	if r.cs.peek().containerType == bf.Link {
-		//		LocalFilePathPrefix
 		sdest := r.cs.peek().destination
-		if !strings.HasPrefix(sdest, "http:") && !strings.HasPrefix(sdest, "https:") {
-			sdest = r.LocalHostPrefix + r.LocalFilePathPrefix + sdest
+		if !zhttp.HasURLScheme(sdest) {
+			id, got := r.anchorLinks[sdest]
+			if !got {
+				id = r.Pdf.AddLink()
+				r.anchorLinks[sdest] = id
+			}
+			r.writeAnchorLink(currentStyle, s, id)
+		} else {
+			r.writeLink(currentStyle, s, sdest)
 		}
-		r.writeLink(currentStyle, s, sdest)
-		// fmt.Println("PdfRenderer processText Link:", s, slink)
 	} else if r.cs.peek().containerType == bf.Heading {
+		r.IsInText = true
 		//r.cr() // add space before heading
+		hid := "#" + node.Parent.HeadingData.HeadingID
+		id, got := r.anchorLinks[hid]
+		if !got {
+			id = r.Pdf.AddLink()
+			r.anchorLinks[hid] = id
+		}
+		// fmt.Printf("AddHeading: %p %s %s %d %+v\n", node, s, node.Parent.HeadingData.HeadingID, r.anchorLinks[hid], anchorLinks)
+		r.Pdf.SetLink(id, -1, r.Pdf.PageNo())
 		r.write(currentStyle, s)
 	} else if r.cs.peek().containerType == bf.TableCell {
+		r.IsInText = true
 		if r.cs.peek().isHeader {
 			r.setStyler(currentStyle)
 			// get the string width of header value
@@ -79,6 +96,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 		}
 	} else {
 		r.IsInText = (len(s) != 0)
+		zlog.Info("ProcessText4:", len(s) != 0)
 		r.write(currentStyle, s)
 	}
 	if r.ParagraphUnprocessed && r.cs.peek().listkind != notlist && s != "" {
@@ -162,8 +180,9 @@ func (r *PdfRenderer) processItem(node *bf.Node, entering bool) {
 		r.cs.push(x)
 		if r.cs.peek().listkind == unordered {
 			r.Pdf.CellFormat(3*r.em, r.Normal.Size+r.Normal.Spacing,
-				"-",
+				"*",
 				"", 0, "RB", false, 0, "")
+			// fmt.Println("Output bullet")
 		} else if r.cs.peek().listkind == ordered {
 			r.Pdf.CellFormat(3*r.em, r.Normal.Size+r.Normal.Spacing,
 				fmt.Sprintf("%v.", r.cs.peek().itemNumber),
@@ -246,13 +265,18 @@ func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 		// following changes suggested by @sirnewton01, issue #6
 		// does file exist?
 		var imgPath = r.LocalFilePathPrefix + string(node.LinkData.Destination)
+		var multiplyDPI float64
+		if zfile.NotExist(imgPath) {
+			multiplyDPI = 3
+			imgPath = r.LocalImagePathAlternativePrefix + string(node.LinkData.Destination)
+		}
 		_, err := os.Stat(imgPath)
-		// fmt.Println("PdfRenderer processImage:", imgPath, err, r.IsInText, "loc:", r.LocalFilePathPrefix)
+		fmt.Println("PdfRenderer processImage:", imgPath, err, r.IsInText)
 		if err == nil {
 			flow := true
 			r.Pdf.ImageOptions(string(imgPath),
 				-1, 0, -1, -1, flow,
-				gofpdf.ImageOptions{ImageType: "", ReadDpi: true, IsInline: r.IsInText}, 0, "")
+				gofpdf.ImageOptions{ImageType: "", ReadDpi: true, MultiplyDPI: multiplyDPI, IsInline: r.IsInText}, 0, "")
 		} else {
 			r.tracer("Image (file error)", err.Error())
 		}

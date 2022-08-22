@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	bf "github.com/torlangballe/blackfridayV2"
-	"github.com/torlangballe/gofpdfv2"
+	gofpdf "github.com/torlangballe/gofpdfv2"
 )
 
 // Color is a RGB set of ints; for a nice picker
@@ -93,8 +93,8 @@ type PdfRenderer struct {
 
 	cs states
 
-	LocalHostPrefix     string
-	LocalFilePathPrefix string // allows images to be in sub-directories
+	LocalFilePathPrefix             string // allows images to be in sub-directories
+	LocalImagePathAlternativePrefix string
 	// IsInImage is set while in image, skipping [Title] stuff that is output. Hack for now.
 	IsInImage            bool
 	IsInText             bool
@@ -102,6 +102,8 @@ type PdfRenderer struct {
 	StrongOn             bool
 	TrimNext             bool
 	CurrentHeaderStyler  *Styler
+
+	anchorLinks map[string]int
 }
 
 // NewPdfRenderer creates and configures an PdfRenderer object,
@@ -180,11 +182,14 @@ func NewPdfRenderer(orient, papersz, pdfFile, tracerFile string) *PdfRenderer {
 		listkind:  notlist,
 		textStyle: r.Normal, leftMargin: r.mleft}
 	r.cs.push(initcurrent)
+
+	r.anchorLinks = map[string]int{}
+
 	return r
 }
 
 // Process takes the markdown content, parses it to generate the PDF
-func (r *PdfRenderer) Process(content []byte) error {
+func (r *PdfRenderer) Process(content []byte, opts ...bf.Option) error {
 
 	fmt.Println("PdfRenderer.Process")
 	// try to open tracer
@@ -205,7 +210,8 @@ func (r *PdfRenderer) Process(content []byte) error {
 	s = strings.Replace(s, "\r\n", "\n", -1)
 
 	content = []byte(s)
-	_ = bf.Run(content, bf.WithRenderer(r))
+	opts = append([]bf.Option{bf.WithRenderer(r)}, opts...)
+	_ = bf.Run(content, opts...)
 
 	err = r.Pdf.OutputFileAndClose(r.pdfFile)
 	if err != nil {
@@ -230,6 +236,10 @@ func (r *PdfRenderer) multiCell(s Styler, t string) {
 
 func (r *PdfRenderer) writeLink(s Styler, display, url string) {
 	r.Pdf.WriteLinkString(s.Size+s.Spacing, display, url)
+}
+
+func (r *PdfRenderer) writeAnchorLink(s Styler, display string, anchorID int) {
+	r.Pdf.WriteLinkID(s.Size+s.Spacing, display, anchorID)
 }
 
 // RenderNode is a default renderer of a single node of a syntax tree. For
@@ -320,7 +330,7 @@ func (r *PdfRenderer) cr() {
 	r.tracer("cr()", fmt.Sprintf("LH=%v", LH))
 	r.write(r.cs.peek().textStyle, "\n")
 	r.IsInText = false
-	//	fmt.Println("CR")
+	fmt.Println("CR")
 	//r.Pdf.Ln(-1)
 }
 
