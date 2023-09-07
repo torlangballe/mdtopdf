@@ -21,7 +21,7 @@ package mdtopdf
 
 import (
 	"fmt"
-	"os"
+	"path"
 	"strings"
 
 	bf "github.com/torlangballe/blackfridayV2"
@@ -38,7 +38,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 
 	r.IsInText = false
 	currentStyle := r.cs.peek().textStyle
-	zlog.Info("processText1", currentStyle, string(node.Literal))
+	// zlog.Info("processText1", string(node.Literal), r.Pdf.Err())
 	r.setStyler(currentStyle)
 	s := string(node.Literal)
 	s = strings.Replace(s, "\n", " ", -1)
@@ -64,6 +64,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 		//r.cr() // add space before heading
 		hid := "#" + node.Parent.HeadingData.HeadingID
 		id, got := r.anchorLinks[hid]
+		// zlog.Info("Output Anchor?", id, got, hid)
 		if !got {
 			id = r.Pdf.AddLink()
 			r.anchorLinks[hid] = id
@@ -96,7 +97,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 		}
 	} else {
 		r.IsInText = (len(s) != 0)
-		zlog.Info("ProcessText4:", len(s) != 0)
+		// zlog.Info("ProcessText4:", len(s) != 0, currentStyle)
 		r.write(currentStyle, s)
 	}
 	if r.ParagraphUnprocessed && r.cs.peek().listkind != notlist && s != "" {
@@ -110,7 +111,7 @@ func (r *PdfRenderer) processText(node *bf.Node) {
 }
 
 func (r *PdfRenderer) processCodeblock(node *bf.Node) {
-	r.tracer("Codeblock", fmt.Sprintf("%v", node.CodeBlockData))
+	// r.tracer("Codeblock", fmt.Sprintf("%v", node.CodeBlockData))
 	r.setStyler(r.Backtick)
 	r.cr() // start on next line!
 	r.multiCell(r.Backtick, string(node.Literal))
@@ -169,6 +170,7 @@ func (r *PdfRenderer) processItem(node *bf.Node, entering bool) {
 		r.tracer(fmt.Sprintf("%v Item (entering) #%v",
 			r.cs.peek().listkind, r.cs.peek().itemNumber+1),
 			fmt.Sprintf("%v", node.ListData))
+		// fmt.Println("processItem", r.cs.peek().listkind, entering, string(node.Literal))
 		r.cr() // newline before getting started
 		x := &containerState{containerType: bf.Item,
 			textStyle: r.Normal, itemNumber: r.cs.peek().itemNumber + 1,
@@ -198,7 +200,7 @@ func (r *PdfRenderer) processItem(node *bf.Node, entering bool) {
 			fmt.Sprintf("%v", node.ListData))
 		// before we output the new line, reset left margin
 		r.Pdf.SetLeftMargin(r.cs.peek().leftMargin)
-		//r.cr()
+		r.cr()
 		r.cs.parent().itemNumber++
 		r.cs.pop()
 	}
@@ -207,7 +209,10 @@ func (r *PdfRenderer) processItem(node *bf.Node, entering bool) {
 func (r *PdfRenderer) processEmph(node *bf.Node, entering bool) {
 	if entering {
 		r.tracer("Emph (entering)", "")
-		r.cs.peek().textStyle.Style += "i"
+		if !strings.Contains(r.cs.peek().textStyle.Style, "i") {
+			r.cs.peek().textStyle.Style += "i"
+		}
+		// fmt.Println("processEmph", entering, r.cs.peek().textStyle.Style)
 	} else {
 		r.tracer("Emph (leaving)", "")
 		r.cs.peek().textStyle.Style = strings.Replace(
@@ -270,15 +275,17 @@ func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 			multiplyDPI = 3
 			imgPath = r.LocalImagePathAlternativePrefix + string(node.LinkData.Destination)
 		}
-		_, err := os.Stat(imgPath)
-		fmt.Println("PdfRenderer processImage:", imgPath, err, r.IsInText)
-		if err == nil {
+		imgPath = path.Clean(imgPath)
+		// fmt.Println("PdfRenderer processImage:", imgPath, r.IsInText, r.Pdf.FileSystem != nil)
+		canOpen := zfile.CanOpenInFS(r.Pdf.FileSystem, imgPath)
+		if canOpen {
 			flow := true
 			r.Pdf.ImageOptions(string(imgPath),
 				-1, 0, -1, -1, flow,
 				gofpdf.ImageOptions{ImageType: "", ReadDpi: true, MultiplyDPI: multiplyDPI, IsInline: r.IsInText}, 0, "")
 		} else {
-			r.tracer("Image (file error)", err.Error())
+			zlog.Error(nil, "Can't open image;", imgPath)
+			r.tracer("Image (file error) can't open", imgPath)
 		}
 	} else {
 		r.tracer("Image (leaving)", "")
