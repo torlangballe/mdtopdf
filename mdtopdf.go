@@ -190,8 +190,7 @@ func NewPdfRenderer(orient, papersz, pdfFile, tracerFile string) *PdfRenderer {
 
 // Process takes the markdown content, parses it to generate the PDF
 func (r *PdfRenderer) Process(content []byte, opts ...bf.Option) error {
-
-	fmt.Println("PdfRenderer.Process")
+	// fmt.Println("PdfRenderer.Process", r.Pdf.FileSystem != nil)
 	// try to open tracer
 	var f *os.File
 	var err error
@@ -330,7 +329,7 @@ func (r *PdfRenderer) cr() {
 	r.tracer("cr()", fmt.Sprintf("LH=%v", LH))
 	r.write(r.cs.peek().textStyle, "\n")
 	r.IsInText = false
-	fmt.Println("CR")
+	// fmt.Println("CR")
 	//r.Pdf.Ln(-1)
 }
 
