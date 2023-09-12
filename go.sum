@@ -1,4 +1,12 @@
+github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
+github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01 h1:tqAYOB6LooZKevIFanQD8JccxxjGeUWKyDSJ/uzkWb0=
 github.com/torlangballe/blackfridayV2 v0.0.0-20201126225340-8152ecef7d01/go.mod h1:T5m9qOyCR7mU/EEFH0WwuwqA/gcAiAgoPdkdLOnJo/Q=
+github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8 h1:HE9CgnpX4GVzOmgZSetJa3jmQMpLqG0lCmiePIQScrQ=
+github.com/torlangballe/blackfridayV2 v0.0.0-20230907135525-adceae2f31a8/go.mod h1:zlC+qcGSvf6Jjp9PSOyiZzK2aCDqfk5Ly/rmEHkFDM8=
 github.com/torlangballe/gofpdfv2 v0.0.0-20211112110848-c4a4c1a7ffdb h1:k98lGbY01+K31HUuqaCy2Jb07o4ZWJObc4KuOPPx5PM=
 github.com/torlangballe/gofpdfv2 v0.0.0-20211112110848-c4a4c1a7ffdb/go.mod h1:BgnofZ8tp2JuyPf0tEBOyUgOHT9FvKiO5aZs4X94N5U=
+github.com/torlangballe/gofpdfv2 v0.0.0-20230907135652-77f990d622c9 h1:Bp/f29XQjCrigre1mIAG7/k4uyM4Cb/XsVabfF3cWo4=
+github.com/torlangballe/gofpdfv2 v0.0.0-20230907135652-77f990d622c9/go.mod h1:BgnofZ8tp2JuyPf0tEBOyUgOHT9FvKiO5aZs4X94N5U=
+github.com/torlangballe/zutil v0.0.0-20230912114100-01c541dc052f h1:ptW6wyQ4SnbovNXnBpqs1jYW5bU3exrRl2qWChcVuSg=
+github.com/torlangballe/zutil v0.0.0-20230912114100-01c541dc052f/go.mod h1:/bED2/yWtcrpxK1DdrMNPZPr6mvQpQjYvZ33mqTDOeE=
