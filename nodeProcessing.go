@@ -271,7 +271,7 @@ func (r *PdfRenderer) processImage(node *bf.Node, entering bool) {
 		// does file exist?
 		var imgPath = r.LocalFilePathPrefix + string(node.LinkData.Destination)
 		var multiplyDPI float64
-		if zfile.NotExist(imgPath) {
+		if zfile.NotExists(imgPath) {
 			multiplyDPI = 3
 			imgPath = r.LocalImagePathAlternativePrefix + string(node.LinkData.Destination)
 		}
